@@ -3,113 +3,540 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <title>Supply Chain Inventory Tracker</title>
 <style>
+  :root {
+    --cyan:   #00f0ff;
+    --purple: #7b00ff;
+    --red:    #ff003c;
+    --green:  #00ff88;
+    --amber:  #ffaa00;
+    --bg:     #030312;
+    --panel:  rgba(4, 4, 35, 0.96);
+    --border: rgba(0, 240, 255, 0.18);
+    --dim:    rgba(140, 170, 200, 0.45);
+    --mono:   'Share Tech Mono', monospace;
+    --sans:   'Space Grotesk', sans-serif;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0f1a; color: #e0e0e0; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
-  .topbar { background: #1a1a2e; border-bottom: 2px solid #e63946; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
-  .topbar h1 { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
-  .topbar h1 span { color: #e63946; }
-  .live-badge { display: flex; align-items: center; gap: 8px; background: #1e1e38; border: 1px solid #2a2a4a; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #2dc653; }
-  .live-dot { width: 8px; height: 8px; background: #2dc653; border-radius: 50%; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .main { padding: 28px 32px; }
-  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-  .kpi { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px 24px; position: relative; overflow: hidden; }
-  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-  .kpi.total::before { background: #4a4aff; }
-  .kpi.reorder::before { background: #e63946; }
-  .kpi.ok::before { background: #2dc653; }
-  .kpi .val { font-size: 36px; font-weight: 700; color: #fff; }
-  .kpi.reorder .val { color: #e63946; }
-  .kpi.ok .val { color: #2dc653; }
-  .kpi .lbl { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
-  .section { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-  .section-header { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
-  .section-header .ai-badge { background: #1e1e38; border: 1px solid #4a4aff; color: #7878ff; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 11px 14px; border-radius: 8px; font-size: 13px; width: 100%; font-family: 'Space Grotesk', sans-serif; transition: border-color 0.2s; }
-  input:focus { outline: none; border-color: #e63946; }
-  input::placeholder { color: #444; }
-  .btn-primary { background: #e63946; color: #fff; border: none; padding: 11px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.5px; transition: background 0.2s; }
-  .btn-primary:hover { background: #c1121f; }
+
+  body {
+    background: var(--bg);
+    color: #c0d8e8;
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scrolling grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,240,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: grid-drift 25s linear infinite;
+    pointer-events: none; z-index: 0;
+  }
+  @keyframes grid-drift { to { background-position: 48px 48px; } }
+
+  /* Ambient glows */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 55% 38% at 15% 8%,  rgba(123,0,255,.07)  0%, transparent 60%),
+      radial-gradient(ellipse 45% 45% at 85% 92%, rgba(0,240,255,.05)  0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── TOPBAR ─────────────────────────────────────── */
+  .topbar {
+    position: relative; z-index: 10;
+    background: rgba(2,2,16,.97);
+    border-bottom: 1px solid var(--border);
+    height: 58px; padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+  .topbar::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--cyan) 50%, transparent 100%);
+    animation: bar-sweep 5s ease-in-out infinite;
+  }
+  @keyframes bar-sweep {
+    0%,100% { opacity: .25; transform: scaleX(.2); }
+    50%      { opacity: 1;   transform: scaleX(1);  }
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 14px; letter-spacing: 4px; text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 0 18px rgba(0,240,255,.7);
+  }
+  .logo em { color: var(--cyan); font-style: normal; }
+
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+
+  .sys-id {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+    color: var(--dim);
+    border: 1px solid rgba(0,240,255,.1); padding: 3px 10px;
+  }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+    color: var(--green);
+    border: 1px solid rgba(0,255,136,.28); padding: 5px 14px;
+    background: rgba(0,255,136,.04);
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--green); border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: dot-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes dot-pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+    50%      { opacity: .35; box-shadow: 0 0 2px var(--green); }
+  }
+
+  /* ── MAIN ───────────────────────────────────────── */
+  .main {
+    position: relative; z-index: 1;
+    padding: 28px 32px;
+    max-width: 1440px; margin: 0 auto;
+  }
+
+  /* ── KPI ROW ────────────────────────────────────── */
+  .kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 22px; }
+
+  .kpi {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px 28px; overflow: hidden;
+    backdrop-filter: blur(8px);
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .kpi:hover { border-color: rgba(0,240,255,.5); box-shadow: 0 0 28px rgba(0,240,255,.08); }
+
+  .kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .kpi.total::before   { background: linear-gradient(90deg, var(--purple), var(--cyan)); }
+  .kpi.reorder::before { background: linear-gradient(90deg, var(--red), #ff7070); }
+  .kpi.ok::before      { background: linear-gradient(90deg, var(--green), #00ffcc); }
+
+  /* shimmer sweep */
+  .kpi::after {
+    content: ''; position: absolute;
+    top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.025), transparent);
+    animation: shimmer 7s ease-in-out infinite;
+  }
+  @keyframes shimmer { 0% { left: -50%; } 100% { left: 140%; } }
+
+  .kpi-lbl {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 10px;
+  }
+  .kpi-val {
+    font-family: var(--mono); font-size: 52px; font-weight: 700; line-height: 1;
+  }
+  .kpi.total   .kpi-val { color: var(--cyan);   text-shadow: 0 0 28px rgba(0,240,255,.5); }
+  .kpi.reorder .kpi-val { color: var(--red);    text-shadow: 0 0 28px rgba(255,0,60,.5); }
+  .kpi.ok      .kpi-val { color: var(--green);  text-shadow: 0 0 28px rgba(0,255,136,.5); }
+  .kpi-sub {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+    color: var(--dim); margin-top: 8px;
+  }
+
+  /* ── PANELS ─────────────────────────────────────── */
+  .panel {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 24px; margin-bottom: 20px;
+    backdrop-filter: blur(8px); overflow: hidden;
+  }
+  /* top-left corner bracket */
+  .panel::before {
+    content: ''; position: absolute; top: -1px; left: -1px;
+    width: 18px; height: 18px;
+    border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+    opacity: .75;
+  }
+  /* bottom-right corner bracket */
+  .panel::after {
+    content: ''; position: absolute; bottom: -1px; right: -1px;
+    width: 18px; height: 18px;
+    border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+    opacity: .75;
+  }
+
+  .panel-hdr {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0,240,255,.07);
+  }
+  .panel-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--cyan);
+  }
+  .badge-ai {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 1.5px;
+    padding: 2px 9px;
+    background: rgba(123,0,255,.12); border: 1px solid rgba(123,0,255,.38);
+    color: #bb88ff;
+  }
+
+  /* ── FORM ───────────────────────────────────────── */
+  .form-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(155px,1fr));
+    gap: 12px; margin-bottom: 16px;
+  }
+  .f-wrap label {
+    display: block; font-family: var(--mono); font-size: 8px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 5px;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    background: rgba(0,3,25,.85);
+    border: 1px solid rgba(0,240,255,.14);
+    color: #c0d8e8; padding: 10px 14px; font-size: 13px;
+    font-family: var(--sans); outline: none; border-radius: 0;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus { border-color: var(--cyan); box-shadow: 0 0 14px rgba(0,240,255,.12); }
+  input::placeholder { color: rgba(140,170,200,.25); }
+
+  .btn-primary {
+    position: relative; overflow: hidden;
+    background: transparent; border: 1px solid var(--cyan);
+    color: var(--cyan); padding: 10px 30px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; cursor: pointer;
+    transition: color .2s, box-shadow .2s;
+  }
+  .btn-primary::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--cyan); transform: translateX(-101%);
+    transition: transform .2s; z-index: 0;
+  }
+  .btn-primary:hover::before { transform: translateX(0); }
+  .btn-primary:hover { color: var(--bg); box-shadow: 0 0 22px rgba(0,240,255,.35); }
+  .btn-primary span { position: relative; z-index: 1; }
+
+  /* ── TABLE ──────────────────────────────────────── */
+  .tbl-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th { background: #12122a; color: #555; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 12px 16px; text-align: left; }
-  td { padding: 14px 16px; font-size: 13px; border-top: 1px solid #1e1e38; color: #bbb; }
-  tr:hover td { background: #1e1e38; }
-  .sku-name { color: #fff; font-weight: 600; }
-  .badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
-  .badge-ok { background: #0a2e14; color: #2dc653; border: 1px solid #1a5c28; }
-  .badge-reorder { background: #2e0a0a; color: #e63946; border: 1px solid #5c1a1a; }
-  .qty-input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 12px; width: 75px; font-family: 'Space Grotesk', sans-serif; }
-  .qty-input:focus { outline: none; border-color: #e63946; }
-  .btn-sm { background: transparent; border: 1px solid #2a2a4a; color: #888; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.2s; margin-right: 6px; }
-  .btn-sm:hover { border-color: #e63946; color: #e63946; }
-  .btn-del { color: #444; }
-  .btn-del:hover { border-color: #e63946; color: #e63946; }
-  .empty { text-align: center; padding: 48px; color: #444; font-size: 13px; }
-  .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
-  .chat-messages { max-height: 320px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 40px; }
-  .chat-messages:empty::before { content: 'Ask me anything about your inventory! Try: "Which items need reordering?" or "Summarize my stock levels."'; color: #444; font-size: 13px; font-style: italic; }
-  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 85%; }
-  .msg.user { background: #e63946; color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
-  .msg.ai { background: #12122a; border: 1px solid #2a2a4a; color: #ccc; align-self: flex-start; border-bottom-left-radius: 3px; }
-  .msg.ai.thinking { color: #555; font-style: italic; }
-  .chat-input-row { display: flex; gap: 10px; }
-  .chat-input-row input { flex: 1; }
-  .btn-ai { background: #4a4aff; color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: background 0.2s; white-space: nowrap; }
-  .btn-ai:hover { background: #3333cc; }
-  .btn-ai:disabled { background: #2a2a4a; color: #555; cursor: not-allowed; }
+  thead tr { border-bottom: 1px solid rgba(0,240,255,.12); }
+  th {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: rgba(0,240,255,.45);
+    padding: 10px 16px; text-align: left; white-space: nowrap;
+  }
+  td {
+    padding: 13px 16px; font-size: 13px;
+    border-bottom: 1px solid rgba(0,240,255,.045);
+    color: rgba(192,216,232,.8); vertical-align: middle;
+    transition: background .15s;
+  }
+  tr:hover td { background: rgba(0,240,255,.035); }
+
+  .sku-name {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: #fff; letter-spacing: .5px;
+  }
+  .qty-num { font-family: var(--mono); font-size: 14px; color: var(--cyan); }
+  .thr-num { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+
+  .badge {
+    display: inline-block; padding: 3px 10px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .badge-ok {
+    background: rgba(0,255,136,.07); border: 1px solid rgba(0,255,136,.32);
+    color: var(--green); box-shadow: 0 0 8px rgba(0,255,136,.12);
+  }
+  .badge-reorder {
+    background: rgba(255,0,60,.07); border: 1px solid rgba(255,0,60,.38);
+    color: var(--red);
+    animation: reorder-glow 2s ease-in-out infinite;
+  }
+  @keyframes reorder-glow {
+    0%,100% { box-shadow: 0 0 6px rgba(255,0,60,.2); }
+    50%      { box-shadow: 0 0 14px rgba(255,0,60,.5); }
+  }
+
+  .qty-input {
+    background: rgba(0,3,25,.85); border: 1px solid rgba(0,240,255,.14);
+    color: var(--cyan); padding: 6px 8px; width: 80px;
+    font-family: var(--mono); font-size: 12px; text-align: center; outline: none;
+  }
+  .qty-input:focus { border-color: var(--cyan); }
+
+  .btn-sm {
+    background: transparent; border: 1px solid rgba(0,240,255,.18);
+    color: rgba(0,240,255,.45); padding: 5px 12px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+    text-transform: uppercase; cursor: pointer; margin-right: 4px;
+    transition: all .18s;
+  }
+  .btn-sm:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,240,255,.07); }
+  .btn-del { border-color: rgba(255,0,60,.18); color: rgba(255,0,60,.4); }
+  .btn-del:hover { border-color: var(--red); color: var(--red); background: rgba(255,0,60,.07); }
+
+  .empty {
+    text-align: center; padding: 48px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--dim);
+  }
+
+  /* ── ANALYTICS ──────────────────────────────────── */
+  .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+
+  .stat-card {
+    background: rgba(0,3,25,.65); border: 1px solid rgba(0,240,255,.1);
+    padding: 18px 20px; text-align: center;
+  }
+  .stat-val {
+    font-family: var(--mono); font-size: 34px; font-weight: 700;
+    color: var(--cyan); text-shadow: 0 0 18px rgba(0,240,255,.4);
+  }
+  .stat-card.danger  .stat-val { color: var(--red);   text-shadow: 0 0 18px rgba(255,0,60,.4); }
+  .stat-card.success .stat-val { color: var(--green); text-shadow: 0 0 18px rgba(0,255,136,.4); }
+  .stat-lbl {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--dim); margin-top: 5px;
+  }
+
+  .analytics-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .sub-title {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 14px;
+  }
+
+  /* Bar chart */
+  .bar-list { display: flex; flex-direction: column; gap: 9px; }
+  .bar-row  { display: flex; align-items: center; gap: 10px; }
+  .bar-lbl  {
+    font-family: var(--mono); font-size: 10px; color: var(--dim);
+    width: 96px; flex-shrink: 0; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .bar-track {
+    flex: 1; height: 14px;
+    background: rgba(0,240,255,.04); border: 1px solid rgba(0,240,255,.07);
+    position: relative; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; width: 0;
+    transition: width .9s cubic-bezier(.23,1,.32,1);
+  }
+  .bar-fill.ok      { background: linear-gradient(90deg, rgba(0,255,136,.25), rgba(0,255,136,.6)); }
+  .bar-fill.reorder { background: linear-gradient(90deg, rgba(255,0,60,.25), rgba(255,0,60,.65)); animation: bar-flicker 2s ease-in-out infinite; }
+  @keyframes bar-flicker { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+  .bar-thr {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--amber); box-shadow: 0 0 5px var(--amber); z-index: 2;
+  }
+  .bar-num { font-family: var(--mono); font-size: 10px; color: var(--dim); width: 36px; flex-shrink: 0; }
+
+  /* Forecast */
+  .forecast-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .fc-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255,170,0,.04);
+    border: 1px solid rgba(255,170,0,.2);
+    border-left: 3px solid var(--amber);
+  }
+  .fc-item.crit {
+    background: rgba(255,0,60,.04);
+    border-color: rgba(255,0,60,.22);
+    border-left-color: var(--red);
+  }
+  .fc-info { flex: 1; }
+  .fc-name { font-family: var(--mono); font-size: 11px; color: #fff; margin-bottom: 2px; }
+  .fc-desc { font-size: 11px; color: var(--dim); }
+  .fc-pct  { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--amber); flex-shrink: 0; }
+  .fc-pct.crit { color: var(--red); }
+
+  .all-ok {
+    text-align: center; padding: 22px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+    color: var(--green);
+    border: 1px solid rgba(0,255,136,.14);
+    background: rgba(0,255,136,.03);
+  }
+
+  /* ── CHAT ───────────────────────────────────────── */
+  .chat-messages {
+    max-height: 290px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+    min-height: 40px; margin-bottom: 14px; padding-right: 4px;
+  }
+  .chat-messages::-webkit-scrollbar { width: 2px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,240,255,.3); }
+  .chat-messages:empty::before {
+    content: '> SYSTEM READY — AWAITING QUERY...';
+    font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+    color: rgba(0,240,255,.25);
+  }
+
+  .msg { padding: 10px 14px; font-size: 13px; line-height: 1.55; max-width: 86%; }
+  .msg.user {
+    background: rgba(123,0,255,.14); border: 1px solid rgba(123,0,255,.28);
+    border-right: 3px solid var(--purple); color: #dcc8ff;
+    align-self: flex-end; font-family: var(--mono); font-size: 12px;
+  }
+  .msg.ai {
+    background: rgba(0,240,255,.045); border: 1px solid rgba(0,240,255,.14);
+    border-left: 3px solid var(--cyan); color: #c0d8e8; align-self: flex-start;
+  }
+  .msg.ai.thinking {
+    color: var(--dim); font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+    animation: thinking-blink 1s step-end infinite;
+  }
+  @keyframes thinking-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .chat-row { display: flex; gap: 10px; }
+  .chat-row input { flex: 1; font-family: var(--mono); font-size: 12px; }
+
+  .btn-ai {
+    background: transparent; border: 1px solid rgba(123,0,255,.5);
+    color: #bb88ff; padding: 10px 22px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer; white-space: nowrap;
+    transition: all .2s;
+  }
+  .btn-ai:hover { background: rgba(123,0,255,.18); box-shadow: 0 0 18px rgba(123,0,255,.3); color: #fff; }
+  .btn-ai:disabled { opacity: .3; cursor: not-allowed; }
 </style>
 </head>
 <body>
+
 <div class="topbar">
-  <h1>Supply Chain <span>//</span> Inventory Tracker</h1>
-  <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+  <div class="logo">SUPPLY<em> // </em>CHAIN&nbsp;&nbsp;INV-SYS</div>
+  <div class="topbar-right">
+    <div class="sys-id">NODE&nbsp;v2.1</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE FEED</div>
+  </div>
 </div>
+
 <div class="main">
+
+  <!-- KPIs -->
   <div class="kpi-row">
-    <div class="kpi total"><div class="val" id="k-total">0</div><div class="lbl">Total SKUs</div></div>
-    <div class="kpi reorder"><div class="val" id="k-reorder">0</div><div class="lbl">Reorder Required</div></div>
-    <div class="kpi ok"><div class="val" id="k-ok">0</div><div class="lbl">Stock Healthy</div></div>
-  </div>
-  <div class="section">
-    <div class="section-header">Add SKU</div>
-    <div class="form-grid">
-      <input type="text" id="name" placeholder="Product / SKU name" />
-      <input type="number" id="quantity" placeholder="Current qty" />
-      <input type="number" id="threshold" placeholder="Reorder threshold" />
-      <input type="text" id="supplier" placeholder="Supplier (optional)" />
+    <div class="kpi total">
+      <div class="kpi-lbl">Total SKUs</div>
+      <div class="kpi-val" id="k-total">0</div>
+      <div class="kpi-sub">ACTIVE NODES</div>
     </div>
-    <button class="btn-primary" onclick="addProduct()">+ Add to Inventory</button>
+    <div class="kpi reorder">
+      <div class="kpi-lbl">Reorder Required</div>
+      <div class="kpi-val" id="k-reorder">0</div>
+      <div class="kpi-sub">CRITICAL ALERTS</div>
+    </div>
+    <div class="kpi ok">
+      <div class="kpi-lbl">Stock Healthy</div>
+      <div class="kpi-val" id="k-ok">0</div>
+      <div class="kpi-sub">NOMINAL</div>
+    </div>
   </div>
-  <div class="section">
-    <div class="section-header">Inventory</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Product / SKU</th><th>Supplier</th><th>Qty in Stock</th><th>Reorder At</th><th>Status</th><th>Update Qty</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+
+  <!-- Add SKU -->
+  <div class="panel">
+    <div class="panel-hdr"><div class="panel-title">// ADD SKU NODE</div></div>
+    <div class="form-grid">
+      <div class="f-wrap"><label>Product / SKU</label><input type="text"   id="name"      placeholder="Enter product name" /></div>
+      <div class="f-wrap"><label>Quantity</label>      <input type="number" id="quantity"  placeholder="0" /></div>
+      <div class="f-wrap"><label>Reorder Threshold</label><input type="number" id="threshold" placeholder="0" /></div>
+      <div class="f-wrap"><label>Supplier</label>      <input type="text"   id="supplier"  placeholder="Optional" /></div>
+    </div>
+    <button class="btn-primary" onclick="addProduct()"><span>+ INITIALIZE NODE</span></button>
   </div>
-  <div class="section">
-    <div class="section-header">
-      🤖 AI Inventory Assistant
-      <span class="ai-badge">Powered by Groq</span>
+
+  <!-- Inventory Table -->
+  <div class="panel">
+    <div class="panel-hdr"><div class="panel-title">// INVENTORY MATRIX</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product / SKU</th><th>Supplier</th><th>Qty in Stock</th>
+            <th>Reorder At</th><th>Status</th><th>Update Qty</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Analytics -->
+  <div class="panel">
+    <div class="panel-hdr"><div class="panel-title">// ANALYTICS HUD</div></div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-val" id="s-total">—</div>
+        <div class="stat-lbl">Total Items</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-val" id="s-healthy">—</div>
+        <div class="stat-lbl">% Healthy</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-val" id="s-reorder">—</div>
+        <div class="stat-lbl">% Reorder</div>
+      </div>
+    </div>
+
+    <div class="analytics-cols">
+      <div>
+        <div class="sub-title">▸ STOCK LEVEL vs REORDER THRESHOLD</div>
+        <div class="bar-list" id="bar-chart">
+          <div class="empty">NO DATA</div>
+        </div>
+      </div>
+      <div>
+        <div class="sub-title">▸ LOW STOCK FORECAST</div>
+        <div class="forecast-list" id="forecast-list">
+          <div class="all-ok">✔ ALL SYSTEMS NOMINAL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Chat -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <div class="panel-title">// AI COMMS INTERFACE</div>
+      <span class="badge-ai">GROQ NEURAL NET</span>
     </div>
     <div class="chat-messages" id="chat-messages"></div>
-    <div class="chat-input-row">
-      <input type="text" id="chat-input" placeholder="Ask about your inventory..." onkeydown="if(event.key==='Enter') sendChat()" />
-      <button class="btn-ai" id="chat-btn" onclick="sendChat()">Ask AI</button>
+    <div class="chat-row">
+      <input type="text" id="chat-input" placeholder="> Enter query..." onkeydown="if(event.key==='Enter') sendChat()" />
+      <button class="btn-ai" id="chat-btn" onclick="sendChat()">TRANSMIT</button>
     </div>
   </div>
-</div>
+
+</div><!-- /main -->
+
 <script>
 const API = 'https://inventory-tracker-production-c9c7.up.railway.app';
-
 let inventoryData = [];
 
 async function load() {
@@ -117,42 +544,117 @@ async function load() {
     const r = await fetch(`${API}/products`);
     const ps = await r.json();
     inventoryData = ps;
-    const tb = document.getElementById('tbody');
-    tb.innerHTML = '';
-    let rc = 0;
-    if (ps.length === 0) {
-      tb.innerHTML = '<tr><td colspan="7" class="empty"><span>📦</span>No SKUs yet. Add your first product above.</td></tr>';
-    }
-    ps.forEach(p => {
-      if (p.reorder_needed) rc++;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="sku-name">${p.name}</td>
-        <td>${p.supplier || '—'}</td>
-        <td>${p.quantity}</td>
-        <td>${p.threshold}</td>
-        <td><span class="badge ${p.reorder_needed ? 'badge-reorder' : 'badge-ok'}">${p.reorder_needed ? '⚠ REORDER' : '✔ OK'}</span></td>
-        <td><input class="qty-input" type="number" id="q${p.id}" value="${p.quantity}" /></td>
-        <td>
-          <button class="btn-sm" onclick="upd(${p.id})">Update</button>
-          <button class="btn-sm btn-del" onclick="del(${p.id})">Delete</button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-    const t = ps.length, ok = t - rc;
-    document.getElementById('k-total').innerText = t;
-    document.getElementById('k-reorder').innerText = rc;
-    document.getElementById('k-ok').innerText = ok;
+    renderTable(ps);
+    renderKPIs(ps);
+    renderAnalytics(ps);
   } catch(e) {
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="7" class="empty"><span>⚠️</span>Backend not reachable.</td></tr>';
+    document.getElementById('tbody').innerHTML =
+      '<tr><td colspan="7" class="empty">⚠ BACKEND NOT REACHABLE</td></tr>';
+  }
+}
+
+function renderTable(ps) {
+  const tb = document.getElementById('tbody');
+  if (!ps.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">◈ NO NODES INITIALIZED</td></tr>';
+    return;
+  }
+  tb.innerHTML = '';
+  ps.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="sku-name">${p.name}</td>
+      <td style="font-size:12px;color:var(--dim)">${p.supplier || '—'}</td>
+      <td class="qty-num">${p.quantity}</td>
+      <td class="thr-num">${p.threshold}</td>
+      <td><span class="badge ${p.reorder_needed ? 'badge-reorder' : 'badge-ok'}">${p.reorder_needed ? '⚠ REORDER' : '● NOMINAL'}</span></td>
+      <td><input class="qty-input" type="number" id="q${p.id}" value="${p.quantity}" /></td>
+      <td>
+        <button class="btn-sm" onclick="upd(${p.id})">SYNC</button>
+        <button class="btn-sm btn-del" onclick="del(${p.id})">PURGE</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function renderKPIs(ps) {
+  const rc = ps.filter(p => p.reorder_needed).length;
+  document.getElementById('k-total').textContent   = ps.length;
+  document.getElementById('k-reorder').textContent = rc;
+  document.getElementById('k-ok').textContent      = ps.length - rc;
+}
+
+function renderAnalytics(ps) {
+  const total   = ps.length;
+  const rcCount = ps.filter(p => p.reorder_needed).length;
+  const okCount = total - rcCount;
+
+  document.getElementById('s-total').textContent   = total;
+  document.getElementById('s-healthy').textContent = total ? Math.round(okCount / total * 100) + '%' : '—';
+  document.getElementById('s-reorder').textContent = total ? Math.round(rcCount / total * 100) + '%' : '—';
+
+  // Bar chart
+  const chart = document.getElementById('bar-chart');
+  if (!ps.length) {
+    chart.innerHTML = '<div class="empty">NO DATA</div>';
+  } else {
+    const maxVal = Math.max(...ps.map(p => Math.max(p.quantity, p.threshold)), 1);
+    chart.innerHTML = ps.map(p => {
+      const qPct = Math.min(p.quantity  / maxVal * 100, 100).toFixed(1);
+      const tPct = Math.min(p.threshold / maxVal * 100, 100).toFixed(1);
+      return `
+        <div class="bar-row">
+          <div class="bar-lbl" title="${p.name}">${p.name}</div>
+          <div class="bar-track">
+            <div class="bar-fill ${p.reorder_needed ? 'reorder' : 'ok'}" data-w="${qPct}%"></div>
+            <div class="bar-thr" style="left:${tPct}%"></div>
+          </div>
+          <div class="bar-num">${p.quantity}</div>
+        </div>`;
+    }).join('');
+    // trigger CSS width transition
+    requestAnimationFrame(() => {
+      chart.querySelectorAll('.bar-fill').forEach(el => {
+        el.style.width = el.dataset.w;
+      });
+    });
+  }
+
+  // Forecast warnings
+  const fc = document.getElementById('forecast-list');
+  const critical = ps.filter(p => p.reorder_needed);
+  const nearThreshold = ps
+    .filter(p => !p.reorder_needed && p.threshold > 0)
+    .map(p => ({ ...p, pct: Math.round(p.quantity / p.threshold * 100) }))
+    .filter(p => p.pct < 200)
+    .sort((a, b) => a.pct - b.pct);
+
+  const warnings = [
+    ...critical.map(p => ({ ...p, pct: Math.round(p.quantity / (p.threshold || 1) * 100), crit: true })),
+    ...nearThreshold
+  ];
+
+  if (!warnings.length) {
+    fc.innerHTML = '<div class="all-ok">✔ ALL SYSTEMS NOMINAL</div>';
+  } else {
+    fc.innerHTML = warnings.map(w => `
+      <div class="fc-item ${w.crit ? 'crit' : ''}">
+        <div class="fc-info">
+          <div class="fc-name">${w.name}</div>
+          <div class="fc-desc">${w.crit
+            ? `Stock below threshold — ${w.quantity} units (limit ${w.threshold})`
+            : `Approaching threshold — ${w.quantity} units remaining`}</div>
+        </div>
+        <div class="fc-pct ${w.crit ? 'crit' : ''}">${w.pct}%</div>
+      </div>`).join('');
   }
 }
 
 async function addProduct() {
-  const name = document.getElementById('name').value.trim();
-  const quantity = parseFloat(document.getElementById('quantity').value);
+  const name      = document.getElementById('name').value.trim();
+  const quantity  = parseFloat(document.getElementById('quantity').value);
   const threshold = parseFloat(document.getElementById('threshold').value);
-  const supplier = document.getElementById('supplier').value.trim();
+  const supplier  = document.getElementById('supplier').value.trim();
   if (!name || isNaN(quantity) || isNaN(threshold)) return alert('Fill in name, quantity and threshold.');
   await fetch(`${API}/products`, {
     method: 'POST',
@@ -174,7 +676,7 @@ async function upd(id) {
 }
 
 async function del(id) {
-  if (!confirm('Remove this SKU?')) return;
+  if (!confirm('PURGE this node from inventory?')) return;
   await fetch(`${API}/products/${id}`, { method: 'DELETE' });
   load();
 }
@@ -191,13 +693,13 @@ function addMessage(text, role) {
 
 async function sendChat() {
   const input = document.getElementById('chat-input');
-  const btn = document.getElementById('chat-btn');
+  const btn   = document.getElementById('chat-btn');
   const question = input.value.trim();
   if (!question) return;
   input.value = '';
   btn.disabled = true;
   addMessage(question, 'user');
-  const thinking = addMessage('Thinking...', 'ai thinking');
+  const thinking = addMessage('> PROCESSING QUERY...', 'ai thinking');
 
   const inventory = inventoryData.map(p => ({
     name: p.name, quantity: p.quantity, threshold: p.threshold,
@@ -205,18 +707,17 @@ async function sendChat() {
   }));
 
   try {
-    const res = await fetch(`${API}/chat`, {
+    const res  = await fetch(`${API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, inventory })
     });
     const data = await res.json();
-    const reply = data.reply || 'Sorry, I could not get a response.';
-    thinking.className = 'msg ai';
-    thinking.textContent = reply;
+    thinking.className   = 'msg ai';
+    thinking.textContent = data.reply || 'No response received.';
   } catch(e) {
-    thinking.className = 'msg ai';
-    thinking.textContent = 'Error reaching AI. Please try again.';
+    thinking.className   = 'msg ai';
+    thinking.textContent = 'ERROR: CONNECTION TO AI SUBSYSTEM LOST.';
   }
   btn.disabled = false;
 }
