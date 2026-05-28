@@ -112,7 +112,7 @@ async def chat(req: ChatRequest):
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}"},
             json={
-                "model": "llama3-8b-8192",
+                "model": "llama-3.1-8b-instant",
                 "messages": [
                     {"role": "system", "content": context},
                     {"role": "user", "content": req.question}
