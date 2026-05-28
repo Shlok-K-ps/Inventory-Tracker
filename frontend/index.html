@@ -8,16 +8,13 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0f0f1a; color: #e0e0e0; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
-  
   .topbar { background: #1a1a2e; border-bottom: 2px solid #e63946; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
   .topbar h1 { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: 1px; text-transform: uppercase; }
   .topbar h1 span { color: #e63946; }
   .live-badge { display: flex; align-items: center; gap: 8px; background: #1e1e38; border: 1px solid #2a2a4a; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #2dc653; }
   .live-dot { width: 8px; height: 8px; background: #2dc653; border-radius: 50%; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
   .main { padding: 28px 32px; }
-
   .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
   .kpi { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px 24px; position: relative; overflow: hidden; }
   .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
@@ -28,40 +25,32 @@
   .kpi.reorder .val { color: #e63946; }
   .kpi.ok .val { color: #2dc653; }
   .kpi .lbl { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
-
   .section { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
   .section-header { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
   .section-header .ai-badge { background: #1e1e38; border: 1px solid #4a4aff; color: #7878ff; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
-
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
   input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 11px 14px; border-radius: 8px; font-size: 13px; width: 100%; font-family: 'Space Grotesk', sans-serif; transition: border-color 0.2s; }
   input:focus { outline: none; border-color: #e63946; }
   input::placeholder { color: #444; }
   .btn-primary { background: #e63946; color: #fff; border: none; padding: 11px 24px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.5px; transition: background 0.2s; }
   .btn-primary:hover { background: #c1121f; }
-
   table { width: 100%; border-collapse: collapse; }
   th { background: #12122a; color: #555; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 12px 16px; text-align: left; }
   td { padding: 14px 16px; font-size: 13px; border-top: 1px solid #1e1e38; color: #bbb; }
   tr:hover td { background: #1e1e38; }
   .sku-name { color: #fff; font-weight: 600; }
-
   .badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
   .badge-ok { background: #0a2e14; color: #2dc653; border: 1px solid #1a5c28; }
   .badge-reorder { background: #2e0a0a; color: #e63946; border: 1px solid #5c1a1a; }
-
   .qty-input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 12px; width: 75px; font-family: 'Space Grotesk', sans-serif; }
   .qty-input:focus { outline: none; border-color: #e63946; }
   .btn-sm { background: transparent; border: 1px solid #2a2a4a; color: #888; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.2s; margin-right: 6px; }
   .btn-sm:hover { border-color: #e63946; color: #e63946; }
   .btn-del { color: #444; }
   .btn-del:hover { border-color: #e63946; color: #e63946; }
-
   .empty { text-align: center; padding: 48px; color: #444; font-size: 13px; }
   .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
-
-  /* ── AI CHAT ── */
-  .chat-messages { max-height: 320px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-messages { max-height: 320px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 40px; }
   .chat-messages:empty::before { content: 'Ask me anything about your inventory! Try: "Which items need reordering?" or "Summarize my stock levels."'; color: #444; font-size: 13px; font-style: italic; }
   .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 85%; }
   .msg.user { background: #e63946; color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
@@ -75,28 +64,16 @@
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <h1>Supply Chain <span>//</span> Inventory Tracker</h1>
   <div class="live-badge"><div class="live-dot"></div> LIVE</div>
 </div>
-
 <div class="main">
   <div class="kpi-row">
-    <div class="kpi total">
-      <div class="val" id="k-total">0</div>
-      <div class="lbl">Total SKUs</div>
-    </div>
-    <div class="kpi reorder">
-      <div class="val" id="k-reorder">0</div>
-      <div class="lbl">Reorder Required</div>
-    </div>
-    <div class="kpi ok">
-      <div class="val" id="k-ok">0</div>
-      <div class="lbl">Stock Healthy</div>
-    </div>
+    <div class="kpi total"><div class="val" id="k-total">0</div><div class="lbl">Total SKUs</div></div>
+    <div class="kpi reorder"><div class="val" id="k-reorder">0</div><div class="lbl">Reorder Required</div></div>
+    <div class="kpi ok"><div class="val" id="k-ok">0</div><div class="lbl">Stock Healthy</div></div>
   </div>
-
   <div class="section">
     <div class="section-header">Add SKU</div>
     <div class="form-grid">
@@ -107,30 +84,21 @@
     </div>
     <button class="btn-primary" onclick="addProduct()">+ Add to Inventory</button>
   </div>
-
   <div class="section">
     <div class="section-header">Inventory</div>
     <table>
       <thead>
         <tr>
-          <th>Product / SKU</th>
-          <th>Supplier</th>
-          <th>Qty in Stock</th>
-          <th>Reorder At</th>
-          <th>Status</th>
-          <th>Update Qty</th>
-          <th></th>
+          <th>Product / SKU</th><th>Supplier</th><th>Qty in Stock</th><th>Reorder At</th><th>Status</th><th>Update Qty</th><th></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
-
-  <!-- AI CHAT SECTION -->
   <div class="section">
     <div class="section-header">
       🤖 AI Inventory Assistant
-      <span class="ai-badge">Powered by Gemini</span>
+      <span class="ai-badge">Powered by Groq</span>
     </div>
     <div class="chat-messages" id="chat-messages"></div>
     <div class="chat-input-row">
@@ -139,10 +107,8 @@
     </div>
   </div>
 </div>
-
 <script>
 const API = 'https://inventory-tracker-production-c9c7.up.railway.app';
-const GEMINI_KEY = 'AIzaSyDPg9Ow8DfArqAAo-Z7yHCqqK6BURaNe7w';
 
 let inventoryData = [];
 
@@ -213,7 +179,6 @@ async function del(id) {
   load();
 }
 
-// ── GEMINI CHAT ──
 function addMessage(text, role) {
   const box = document.getElementById('chat-messages');
   const div = document.createElement('div');
@@ -229,50 +194,30 @@ async function sendChat() {
   const btn = document.getElementById('chat-btn');
   const question = input.value.trim();
   if (!question) return;
-
   input.value = '';
   btn.disabled = true;
   addMessage(question, 'user');
-
   const thinking = addMessage('Thinking...', 'ai thinking');
 
-  // Build inventory context for Gemini
-  let context = 'You are an AI assistant for a Supply Chain Inventory Tracker. ';
-  if (inventoryData.length > 0) {
-    context += `Current inventory data: ${JSON.stringify(inventoryData.map(p => ({
-      name: p.name,
-      quantity: p.quantity,
-      threshold: p.threshold,
-      supplier: p.supplier || 'N/A',
-      status: p.reorder_needed ? 'NEEDS REORDER' : 'OK'
-    })))}. `;
-  } else {
-    context += 'The inventory is currently empty. ';
-  }
-  context += 'Answer the user question based on this data. Be concise and helpful.';
+  const inventory = inventoryData.map(p => ({
+    name: p.name, quantity: p.quantity, threshold: p.threshold,
+    supplier: p.supplier || 'N/A', status: p.reorder_needed ? 'NEEDS REORDER' : 'OK'
+  }));
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: context + '\n\nUser question: ' + question }]
-          }]
-        })
-      }
-    );
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, inventory })
+    });
     const data = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not get a response.';
+    const reply = data.reply || 'Sorry, I could not get a response.';
     thinking.className = 'msg ai';
     thinking.textContent = reply;
   } catch(e) {
     thinking.className = 'msg ai';
-    thinking.textContent = 'Error reaching Gemini. Check your API key.';
+    thinking.textContent = 'Error reaching AI. Please try again.';
   }
-
   btn.disabled = false;
 }
 

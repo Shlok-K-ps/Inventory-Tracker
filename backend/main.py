@@ -1,10 +1,12 @@
+import os
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Any
 
 app = FastAPI()
 
@@ -87,3 +89,39 @@ def delete_product(product_id: int):
     db.commit()
     db.close()
     return {"message": "Deleted"}
+
+class ChatRequest(BaseModel):
+    question: str
+    inventory: List[Any] = []
+
+@app.post("/chat")
+async def chat(req: ChatRequest):
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if not groq_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    context = "You are an AI assistant for a Supply Chain Inventory Tracker. "
+    if req.inventory:
+        context += f"Current inventory: {req.inventory}. "
+    else:
+        context += "The inventory is currently empty. "
+    context += "Answer concisely based on this data."
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}"},
+            json={
+                "model": "llama3-8b-8192",
+                "messages": [
+                    {"role": "system", "content": context},
+                    {"role": "user", "content": req.question}
+                ],
+                "max_tokens": 300
+            },
+            timeout=30.0
+        )
+        data = response.json()
+
+    reply = data.get("choices", [{}])[0].get("message", {}).get("content", "Sorry, I could not get a response.")
+    return {"reply": reply}
