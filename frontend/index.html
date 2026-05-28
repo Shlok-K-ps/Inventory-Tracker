@@ -30,7 +30,8 @@
   .kpi .lbl { font-size: 11px; color: #666; margin-top: 6px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
 
   .section { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-  .section-header { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
+  .section-header { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .section-header .ai-badge { background: #1e1e38; border: 1px solid #4a4aff; color: #7878ff; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
 
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
   input { background: #0f0f1a; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 11px 14px; border-radius: 8px; font-size: 13px; width: 100%; font-family: 'Space Grotesk', sans-serif; transition: border-color 0.2s; }
@@ -58,6 +59,19 @@
 
   .empty { text-align: center; padding: 48px; color: #444; font-size: 13px; }
   .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
+
+  /* ── AI CHAT ── */
+  .chat-messages { max-height: 320px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-messages:empty::before { content: 'Ask me anything about your inventory! Try: "Which items need reordering?" or "Summarize my stock levels."'; color: #444; font-size: 13px; font-style: italic; }
+  .msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 85%; }
+  .msg.user { background: #e63946; color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
+  .msg.ai { background: #12122a; border: 1px solid #2a2a4a; color: #ccc; align-self: flex-start; border-bottom-left-radius: 3px; }
+  .msg.ai.thinking { color: #555; font-style: italic; }
+  .chat-input-row { display: flex; gap: 10px; }
+  .chat-input-row input { flex: 1; }
+  .btn-ai { background: #4a4aff; color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: background 0.2s; white-space: nowrap; }
+  .btn-ai:hover { background: #3333cc; }
+  .btn-ai:disabled { background: #2a2a4a; color: #555; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -111,15 +125,32 @@
       <tbody id="tbody"></tbody>
     </table>
   </div>
+
+  <!-- AI CHAT SECTION -->
+  <div class="section">
+    <div class="section-header">
+      🤖 AI Inventory Assistant
+      <span class="ai-badge">Powered by Gemini</span>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask about your inventory..." onkeydown="if(event.key==='Enter') sendChat()" />
+      <button class="btn-ai" id="chat-btn" onclick="sendChat()">Ask AI</button>
+    </div>
+  </div>
 </div>
 
 <script>
 const API = 'https://inventory-tracker-production-c9c7.up.railway.app';
+const GEMINI_KEY = 'AIzaSyBJm0FIys6qVsuT1fH8hil6VVmcinpxacU';
+
+let inventoryData = [];
 
 async function load() {
   try {
     const r = await fetch(`${API}/products`);
     const ps = await r.json();
+    inventoryData = ps;
     const tb = document.getElementById('tbody');
     tb.innerHTML = '';
     let rc = 0;
@@ -134,7 +165,7 @@ async function load() {
         <td>${p.supplier || '—'}</td>
         <td>${p.quantity}</td>
         <td>${p.threshold}</td>
-        <td><span class="badge ${p.reorder_needed ? 'badge-reorder' : 'badge-ok'}">${p.reorder_needed ? '⚠ REORDER' : '✓ OK'}</span></td>
+        <td><span class="badge ${p.reorder_needed ? 'badge-reorder' : 'badge-ok'}">${p.reorder_needed ? '⚠ REORDER' : '✔ OK'}</span></td>
         <td><input class="qty-input" type="number" id="q${p.id}" value="${p.quantity}" /></td>
         <td>
           <button class="btn-sm" onclick="upd(${p.id})">Update</button>
@@ -147,7 +178,7 @@ async function load() {
     document.getElementById('k-reorder').innerText = rc;
     document.getElementById('k-ok').innerText = ok;
   } catch(e) {
-    document.getElementById('tbody').innerHTML = '<tr><td colspan="7" class="empty"><span>⚠️</span>Backend not running. Start uvicorn first.</td></tr>';
+    document.getElementById('tbody').innerHTML = '<tr><td colspan="7" class="empty"><span>⚠️</span>Backend not reachable.</td></tr>';
   }
 }
 
@@ -180,6 +211,69 @@ async function del(id) {
   if (!confirm('Remove this SKU?')) return;
   await fetch(`${API}/products/${id}`, { method: 'DELETE' });
   load();
+}
+
+// ── GEMINI CHAT ──
+function addMessage(text, role) {
+  const box = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const btn = document.getElementById('chat-btn');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  btn.disabled = true;
+  addMessage(question, 'user');
+
+  const thinking = addMessage('Thinking...', 'ai thinking');
+
+  // Build inventory context for Gemini
+  let context = 'You are an AI assistant for a Supply Chain Inventory Tracker. ';
+  if (inventoryData.length > 0) {
+    context += `Current inventory data: ${JSON.stringify(inventoryData.map(p => ({
+      name: p.name,
+      quantity: p.quantity,
+      threshold: p.threshold,
+      supplier: p.supplier || 'N/A',
+      status: p.reorder_needed ? 'NEEDS REORDER' : 'OK'
+    })))}. `;
+  } else {
+    context += 'The inventory is currently empty. ';
+  }
+  context += 'Answer the user question based on this data. Be concise and helpful.';
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: context + '\n\nUser question: ' + question }]
+          }]
+        })
+      }
+    );
+    const data = await res.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not get a response.';
+    thinking.className = 'msg ai';
+    thinking.textContent = reply;
+  } catch(e) {
+    thinking.className = 'msg ai';
+    thinking.textContent = 'Error reaching Gemini. Check your API key.';
+  }
+
+  btn.disabled = false;
 }
 
 load();
