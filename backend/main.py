@@ -12,7 +12,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://frontend-mu-ten-95.vercel.app"],
+    allow_origins=["https://inventory-tracker-eight-theta.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
