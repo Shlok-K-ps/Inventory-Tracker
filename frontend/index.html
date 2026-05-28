@@ -296,6 +296,17 @@
   .btn-del { border-color: rgba(255,0,60,.18); color: rgba(255,0,60,.4); }
   .btn-del:hover { border-color: var(--red); color: var(--red); background: rgba(255,0,60,.07); }
 
+  .btn-export {
+    background: transparent; border: 1px solid rgba(0,255,136,.35);
+    color: rgba(0,255,136,.7); padding: 5px 14px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+    text-transform: uppercase; cursor: pointer; transition: all .18s;
+    margin-left: auto;
+  }
+  .btn-export:hover { border-color: var(--green); color: var(--green); background: rgba(0,255,136,.07); box-shadow: 0 0 12px rgba(0,255,136,.15); }
+
+  .days-urgent { color: var(--red) !important; text-shadow: 0 0 8px rgba(255,0,60,.4); }
+
   .empty {
     text-align: center; padding: 48px;
     font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--dim);
@@ -464,20 +475,24 @@
       <div class="f-wrap"><label>Product / SKU</label><input type="text"   id="name"      placeholder="Enter product name" /></div>
       <div class="f-wrap"><label>Quantity</label>      <input type="number" id="quantity"  placeholder="0" /></div>
       <div class="f-wrap"><label>Reorder Threshold</label><input type="number" id="threshold" placeholder="0" /></div>
-      <div class="f-wrap"><label>Supplier</label>      <input type="text"   id="supplier"  placeholder="Optional" /></div>
+      <div class="f-wrap"><label>Supplier</label>      <input type="text"   id="supplier"    placeholder="Optional" /></div>
+      <div class="f-wrap"><label>Usage Rate (units/day)</label><input type="number" id="usage_rate" placeholder="0" min="0" step="any" /></div>
     </div>
     <button class="btn-primary" onclick="addProduct()"><span>+ INITIALIZE NODE</span></button>
   </div>
 
   <!-- Inventory Table -->
   <div class="panel">
-    <div class="panel-hdr"><div class="panel-title">// INVENTORY MATRIX</div></div>
+    <div class="panel-hdr">
+      <div class="panel-title">// INVENTORY MATRIX</div>
+      <button class="btn-export" onclick="exportCSV()">⬇ EXPORT CSV</button>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead>
           <tr>
             <th>Product / SKU</th><th>Supplier</th><th>Qty in Stock</th>
-            <th>Reorder At</th><th>Status</th><th>Update Qty</th><th></th>
+            <th>Reorder At</th><th>Status</th><th>Days Until Stockout</th><th>Update Qty</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -549,18 +564,22 @@ async function load() {
     renderAnalytics(ps);
   } catch(e) {
     document.getElementById('tbody').innerHTML =
-      '<tr><td colspan="7" class="empty">⚠ BACKEND NOT REACHABLE</td></tr>';
+      '<tr><td colspan="8" class="empty">⚠ BACKEND NOT REACHABLE</td></tr>';
   }
 }
 
 function renderTable(ps) {
   const tb = document.getElementById('tbody');
   if (!ps.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">◈ NO NODES INITIALIZED</td></tr>';
+    tb.innerHTML = '<tr><td colspan="8" class="empty">◈ NO NODES INITIALIZED</td></tr>';
     return;
   }
   tb.innerHTML = '';
   ps.forEach(p => {
+    const days = (p.usage_rate > 0) ? Math.floor(p.quantity / p.usage_rate) : null;
+    const daysHtml = days === null
+      ? `<span style="color:var(--dim);font-family:var(--mono);font-size:11px">N/A</span>`
+      : `<span class="days-num${days < 7 ? ' days-urgent' : ''}" style="font-family:var(--mono);font-size:13px">${days}d</span>`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="sku-name">${p.name}</td>
@@ -568,6 +587,7 @@ function renderTable(ps) {
       <td class="qty-num">${p.quantity}</td>
       <td class="thr-num">${p.threshold}</td>
       <td><span class="badge ${p.reorder_needed ? 'badge-reorder' : 'badge-ok'}">${p.reorder_needed ? '⚠ REORDER' : '● NOMINAL'}</span></td>
+      <td>${daysHtml}</td>
       <td><input class="qty-input" type="number" id="q${p.id}" value="${p.quantity}" /></td>
       <td>
         <button class="btn-sm" onclick="upd(${p.id})">SYNC</button>
@@ -654,15 +674,35 @@ async function addProduct() {
   const name      = document.getElementById('name').value.trim();
   const quantity  = parseFloat(document.getElementById('quantity').value);
   const threshold = parseFloat(document.getElementById('threshold').value);
-  const supplier  = document.getElementById('supplier').value.trim();
+  const supplier   = document.getElementById('supplier').value.trim();
+  const usage_rate = parseFloat(document.getElementById('usage_rate').value) || 0;
   if (!name || isNaN(quantity) || isNaN(threshold)) return alert('Fill in name, quantity and threshold.');
   await fetch(`${API}/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, quantity, threshold, supplier })
+    body: JSON.stringify({ name, quantity, threshold, supplier, usage_rate })
   });
-  ['name','quantity','threshold','supplier'].forEach(id => document.getElementById(id).value = '');
+  ['name','quantity','threshold','supplier','usage_rate'].forEach(id => document.getElementById(id).value = '');
   load();
+}
+
+function exportCSV() {
+  if (!inventoryData.length) return alert('No inventory data to export.');
+  const headers = ['Product', 'Supplier', 'Quantity', 'Reorder Threshold', 'Usage Rate (units/day)', 'Status'];
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = inventoryData.map(p => [
+    esc(p.name),
+    esc(p.supplier || ''),
+    p.quantity,
+    p.threshold,
+    p.usage_rate || 0,
+    esc(p.reorder_needed ? 'Reorder Required' : 'OK')
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'inventory.csv' });
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 async function upd(id) {

@@ -2,7 +2,7 @@ import os
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy import create_engine, Column, Integer, String, Float, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
@@ -28,15 +28,25 @@ class Product(Base):
     name = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)
     threshold = Column(Float, nullable=False)
-    supplier = Column(String, nullable=True)
+    supplier   = Column(String, nullable=True)
+    usage_rate = Column(Float, nullable=True, default=0)
 
 Base.metadata.create_all(bind=engine)
+
+# migrate existing DB — add usage_rate if not present
+with engine.connect() as _conn:
+    try:
+        _conn.execute(text("ALTER TABLE products ADD COLUMN usage_rate FLOAT DEFAULT 0"))
+        _conn.commit()
+    except Exception:
+        pass
 
 class ProductCreate(BaseModel):
     name: str
     quantity: float
     threshold: float
-    supplier: Optional[str] = ""
+    supplier:   Optional[str]   = ""
+    usage_rate: Optional[float] = 0
 
 class ProductUpdate(BaseModel):
     quantity: float
@@ -52,7 +62,8 @@ def get_products():
             "name": p.name,
             "quantity": p.quantity,
             "threshold": p.threshold,
-            "supplier": p.supplier,
+            "supplier":      p.supplier,
+            "usage_rate":    p.usage_rate or 0,
             "reorder_needed": p.quantity < p.threshold
         }
         for p in products
