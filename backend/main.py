@@ -123,5 +123,6 @@ async def chat(req: ChatRequest):
         )
         data = response.json()
 
-    reply = data.get("choices", [{}])[0].get("message", {}).get("content", "Sorry, I could not get a response.")
+    choices = data.get("choices") or [{}]
+    reply = choices[0].get("message", {}).get("content") or "Sorry, I could not get a response."
     return {"reply": reply}
